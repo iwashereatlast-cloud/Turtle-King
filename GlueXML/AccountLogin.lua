@@ -182,6 +182,7 @@ function Autologin_BuildUI()
 end
 
 function Autologin_CleanLoginUI()
+	if ( AccountLoginLogo ) then AccountLoginLogo:Hide(); end
 	if ( AccountLoginVersion ) then AccountLoginVersion:Hide(); end
 	if ( WorldOfWarcraftRating ) then WorldOfWarcraftRating:Hide(); end
 	if ( AccountLoginCommunityButton ) then AccountLoginCommunityButton:Hide(); end
