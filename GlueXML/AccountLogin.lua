@@ -68,6 +68,119 @@ function Autologin_Save(name, password)
 	SetSavedAccountName(savedVar);
 end
 
+-- Build the account panel entirely in Lua (CreateFrame works in the 3.3.5a
+-- glue environment; this avoids XML parser quirks with custom templates).
+local function CreateAutologinFontString(parent, name, font, justifyH)
+	local fs = parent:CreateFontString(nil, "ARTWORK", font);
+	if ( justifyH ) then fs:SetJustifyH(justifyH); end
+	return fs;
+end
+
+function Autologin_BuildUI()
+	if ( AutologinAccountButton1 ) then
+		return;
+	end
+
+	local panel = CreateFrame("FRAME", "AutologinAccountsFrame", AccountLoginUI);
+	panel:SetWidth(260);
+	panel:SetHeight(330);
+	panel:SetPoint("TOPRIGHT", AccountLoginUI, "TOPRIGHT", -5, -15);
+	panel:SetBackdrop({
+		bgFile = "Interface\\Glues\\Common\\Glue-Tooltip-Background",
+		edgeFile = "Interface\\Glues\\Common\\Glue-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 16,
+		insets = { left = 10, right = 5, top = 4, bottom = 9 },
+	});
+
+	local title = panel:CreateFontString(nil, "BACKGROUND", "GlueFontDisableLarge");
+	title:SetWidth(256);
+	title:SetHeight(13);
+	title:SetPoint("TOP", panel, "TOP", 0, -10);
+	title:SetText("Select account");
+
+	local warning = panel:CreateFontString(nil, "BACKGROUND", "GlueFontRedSmall");
+	warning:SetWidth(220);
+	warning:SetHeight(28);
+	warning:SetPoint("TOP", panel, "BOTTOM", 0, 4);
+	warning:SetText("WARNING: Too many accounts. Changes won't be saved correctly.");
+	AutologinSizeWarning = warning;
+
+	for i = 1, Autologin_PageSize do
+		local button = CreateFrame("BUTTON", "AutologinAccountButton" .. i, panel);
+		button:SetID(i);
+		button:SetWidth(256);
+		button:SetHeight(70);
+		if ( i == 1 ) then
+			button:SetPoint("TOP", panel, "TOP", 22, -30);
+		else
+			button:SetPoint("TOP", "AutologinAccountButton" .. (i - 1), "BOTTOM", 0, 13);
+		end
+
+		local highlight = button:CreateTexture(nil, "HIGHLIGHT");
+		highlight:SetTexture("Interface\\Glues\\CharacterSelect\\Glue-CharacterSelect-Highlight");
+		highlight:SetWidth(256);
+		highlight:SetHeight(74);
+		highlight:SetPoint("TOPLEFT", button, "TOPLEFT", -20, 8);
+		highlight:SetBlendMode("ADD");
+
+		local name = button:CreateFontString(nil, "BORDER", "GlueFontNormal");
+		name:SetJustifyH("LEFT");
+		name:SetPoint("TOPLEFT", button, "TOPLEFT", 0, -5);
+
+		local password = button:CreateFontString(nil, "BORDER", "GlueFontHighlightSmall");
+		password:SetJustifyH("LEFT");
+		password:SetWidth(217);
+		password:SetHeight(12);
+		password:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -1);
+
+		local character = button:CreateFontString(nil, "BORDER", "GlueFontDisableSmall");
+		character:SetJustifyH("LEFT");
+		character:SetWidth(217);
+		character:SetHeight(16);
+		character:SetPoint("TOPLEFT", password, "BOTTOMLEFT", 0, -1);
+
+		button.nameFS = name;
+		button.passwordFS = password;
+		button.characterFS = character;
+
+		button:SetScript("OnClick", function(self) AutologinAccountButton_OnClick(self); end);
+		button:SetScript("OnDoubleClick", function(self) AutologinAccountButton_OnDoubleClick(self); end);
+	end
+
+	local removeBtn = CreateFrame("BUTTON", "AutologinRemoveAccountButton", panel, "GlueButtonSmallTemplate");
+	removeBtn:SetWidth(150);
+	removeBtn:SetHeight(38);
+	removeBtn:SetPoint("BOTTOM", panel, "BOTTOM", 0, 5);
+	removeBtn:SetText("Remove account");
+	removeBtn:SetScript("OnClick", function() Autologin_RemoveAccount(); end);
+
+	local clearBtn = CreateFrame("BUTTON", "AutologinClearCharacterButton", panel, "GlueButtonSmallTemplate");
+	clearBtn:SetWidth(150);
+	clearBtn:SetHeight(38);
+	clearBtn:SetPoint("BOTTOM", removeBtn, "TOP", 0, 10);
+	clearBtn:SetText("Clear character");
+	clearBtn:SetScript("OnClick", function() Autologin_ClearCharacter(); end);
+
+	local function arrowButton(name, texPrefix, point, x)
+		local btn = CreateFrame("BUTTON", name, panel);
+		btn:SetWidth(32);
+		btn:SetHeight(32);
+		btn:SetPoint(point, panel, point, x, 10);
+		btn:SetNormalTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Up");
+		btn:SetPushedTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Down");
+		local hl = btn:CreateTexture(nil, "HIGHLIGHT");
+		hl:SetTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Highlight");
+		hl:SetBlendMode("ADD");
+		hl:SetAllPoints(btn);
+		return btn;
+	end
+
+	local nextBtn = arrowButton("AutologinNextPage", "Glue-RightArrow", "BOTTOMRIGHT", -5);
+	nextBtn:SetScript("OnClick", function() Autologin_NextPage(); end);
+	local prevBtn = arrowButton("AutologinPrevPage", "Glue-LeftArrow", "BOTTOMLEFT", 10);
+	prevBtn:SetScript("OnClick", function() Autologin_PrevPage(); end);
+end
+
 function Autologin_SelectAccount(idx)
 	local i = Autologin_CurrentPage * Autologin_PageSize + idx;
 	if ( not Autologin_Table[i] ) then
@@ -179,6 +292,7 @@ end
 
 function AccountLogin_OnLoad(self)
 	TOSFrame.noticeType = "EULA";
+	Autologin_BuildUI();
 
 	self:RegisterEvent("SHOW_SERVER_ALERT");
 	self:RegisterEvent("SHOW_SURVEY_NOTIFICATION");
