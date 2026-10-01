@@ -69,8 +69,8 @@
 				</Anchor>
 			</Anchors>
 		</HighlightTexture>
-		<NormalFont inherits="GlueFontNormal"/>
-		<HighlightFont inherits="GlueFontHighlight"/>
+		<NormalFont style="GlueFontNormal"/>
+		<HighlightFont style="GlueFontHighlight"/>
 	</Button>
 
 	<Button name="VirtualKeyPadButtonTemplate" inherits="GlueMenuButtonTemplate" virtual="true">
