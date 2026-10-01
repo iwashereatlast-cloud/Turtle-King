@@ -216,12 +216,12 @@ function Autologin_UpdateUI()
 		else
 			local r = Autologin_Table[skip + i];
 			button:Show();
-			_G["AutologinAccountButton" .. i .. "ButtonTextName"]:SetText(r.name);
-			_G["AutologinAccountButton" .. i .. "ButtonTextPassword"]:SetText("Password: " .. string.rep("*", string.len(r.password)));
+			button.nameFS:SetText(r.name);
+			button.passwordFS:SetText("Password: " .. string.rep("*", string.len(r.password)));
 			if ( r.character == "-" ) then
-				_G["AutologinAccountButton" .. i .. "ButtonTextCharacter"]:SetText("");
+				button.characterFS:SetText("");
 			else
-				_G["AutologinAccountButton" .. i .. "ButtonTextCharacter"]:SetText("Character: " .. r.character);
+				button.characterFS:SetText("Character: " .. r.character);
 			end
 			if ( Autologin_SelectedIdx == skip + i ) then
 				button:LockHighlight();
