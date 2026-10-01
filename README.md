@@ -31,7 +31,7 @@ client, which permits interface edits out of the box.
 
 1. Navigate to your WoW client folder
 2. Create the folder `Data/Interface/GlueXML/` if it does not exist
-3. Copy the files from `Interface-3.3.5a/GlueXML/` of this repository into it:
+3. Copy the files from `Interface/GlueXML/` of this repository into it:
 
 ```
 Data/
