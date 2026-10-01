@@ -6,7 +6,7 @@ MAX_PIN_LENGTH = 10;
 Autologin_Table = {};
 Autologin_SelectedIdx = nil;
 Autologin_CurrentPage = 0;
-Autologin_PageSize = 4;
+Autologin_PageSize = 6;
 Autologin_LimitReached = false;
 
 function Autologin_Load()
@@ -83,8 +83,8 @@ function Autologin_BuildUI()
 
 	local panel = CreateFrame("FRAME", "AutologinAccountsFrame", AccountLoginUI);
 	panel:SetWidth(260);
-	panel:SetHeight(330);
-	panel:SetPoint("TOPRIGHT", AccountLoginUI, "TOPRIGHT", -5, -15);
+	panel:SetHeight(560);
+	panel:SetPoint("TOPLEFT", AccountLoginUI, "TOPLEFT", 5, -15);
 	panel:SetBackdrop({
 		bgFile = "Interface\\Glues\\Common\\Glue-Tooltip-Background",
 		edgeFile = "Interface\\Glues\\Common\\Glue-Tooltip-Border",
@@ -179,6 +179,16 @@ function Autologin_BuildUI()
 	nextBtn:SetScript("OnClick", function() Autologin_NextPage(); end);
 	local prevBtn = arrowButton("AutologinPrevPage", "Glue-LeftArrow", "BOTTOMLEFT", 10);
 	prevBtn:SetScript("OnClick", function() Autologin_PrevPage(); end);
+end
+
+function Autologin_CleanLoginUI()
+	if ( AccountLoginVersion ) then AccountLoginVersion:Hide(); end
+	if ( WorldOfWarcraftRating ) then WorldOfWarcraftRating:Hide(); end
+	if ( AccountLoginCommunityButton ) then AccountLoginCommunityButton:Hide(); end
+	if ( AccountLoginManageAccountButton ) then AccountLoginManageAccountButton:Hide(); end
+	if ( AccountLoginShowLauncher ) then AccountLoginShowLauncher:Hide(); end
+	if ( AccountLoginSaveAccountName ) then AccountLoginSaveAccountName:Hide(); end
+	if ( AccountLoginSaveAccountNameText ) then AccountLoginSaveAccountNameText:Hide(); end
 end
 
 function Autologin_SelectAccount(idx)
@@ -293,6 +303,7 @@ end
 function AccountLogin_OnLoad(self)
 	TOSFrame.noticeType = "EULA";
 	Autologin_BuildUI();
+	Autologin_CleanLoginUI();
 
 	self:RegisterEvent("SHOW_SERVER_ALERT");
 	self:RegisterEvent("SHOW_SURVEY_NOTIFICATION");
@@ -328,6 +339,7 @@ end
 
 function AccountLogin_OnShow(self)
 	self:SetSequence(0);
+	Autologin_CleanLoginUI();
 	PlayGlueMusic(CurrentGlueMusic);
 	PlayGlueAmbience(GlueAmbienceTracks["DARKPORTAL"], 4.0);
 
@@ -385,7 +397,7 @@ end
 function AccountLogin_OnHide(self)
 	--Stop the sounds from the login screen (like the dragon roaring etc)
 	StopAllSFX( 1.0 );
-	if ( not AccountLoginSaveAccountName:GetChecked() ) then
+	if ( AccountLoginSaveAccountName and not AccountLoginSaveAccountName:GetChecked() ) then
 		SetSavedAccountList("");
 	end
 end
