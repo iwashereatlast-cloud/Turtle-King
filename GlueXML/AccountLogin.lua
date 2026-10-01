@@ -91,6 +91,9 @@ function Autologin_OnNameUpdate(name)
 end
 
 function Autologin_UpdateUI()
+	if ( not AutologinAccountButton1 ) then
+		return;
+	end
 	local skip = Autologin_CurrentPage * Autologin_PageSize;
 	for i = 1, Autologin_PageSize do
 		local button = _G["AutologinAccountButton" .. i];
@@ -113,9 +116,9 @@ function Autologin_UpdateUI()
 		end
 	end
 	if ( Autologin_LimitReached ) then
-		AutologinSizeWarning:Show();
+		if ( AutologinSizeWarning ) then AutologinSizeWarning:Show(); end
 	else
-		AutologinSizeWarning:Hide();
+		if ( AutologinSizeWarning ) then AutologinSizeWarning:Hide(); end
 	end
 end
 
