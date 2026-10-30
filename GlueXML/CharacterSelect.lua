@@ -1,4 +1,24 @@
 -- Autologin (ported from Turtle WoW for 3.3.5a)
+Autologin_PendingIndex = nil;
+Autologin_Timer = nil;
+
+local function Autologin_OnUpdate(self, elapsed)
+	if ( not Autologin_PendingIndex ) then
+		self:Hide();
+		return;
+	end
+	self.elapsed = (self.elapsed or 0) + elapsed;
+	if ( self.elapsed >= 1.0 ) then
+		local index = Autologin_PendingIndex;
+		Autologin_PendingIndex = nil;
+		self:Hide();
+		-- List may have changed while waiting; revalidate
+		if ( index >= 1 and index <= GetNumCharacters() and CharacterSelect.selectedIndex == index ) then
+			EnterWorld();
+		end
+	end
+end
+
 function Autologin_OnCharactersLoad()
 	Autologin_Load();
 	local selected = Autologin_Table[Autologin_SelectedIdx];
@@ -13,7 +33,16 @@ function Autologin_OnCharactersLoad()
 	local index = tonumber(selected.character);
 	if ( index >= 1 and index <= GetNumCharacters() ) then
 		CharacterSelect_SelectCharacter(index);
-		EnterWorld();
+		-- Do NOT EnterWorld immediately inside CHARACTER_LIST_UPDATE:
+		-- entering before the login handshake settles causes missing
+		-- trade skill data on first login. Wait ~1s via a timer instead.
+		if ( not Autologin_Timer ) then
+			Autologin_Timer = CreateFrame("FRAME");
+			Autologin_Timer:SetScript("OnUpdate", Autologin_OnUpdate);
+		end
+		Autologin_Timer.elapsed = 0;
+		Autologin_PendingIndex = index;
+		Autologin_Timer:Show();
 	end
 end
 
