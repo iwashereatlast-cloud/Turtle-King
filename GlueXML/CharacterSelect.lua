@@ -1,23 +1,5 @@
 -- Autologin (ported from Turtle WoW for 3.3.5a)
 Autologin_PendingIndex = nil;
-Autologin_Timer = nil;
-
-local function Autologin_OnUpdate(self, elapsed)
-	if ( not Autologin_PendingIndex ) then
-		self:Hide();
-		return;
-	end
-	self.elapsed = (self.elapsed or 0) + elapsed;
-	if ( self.elapsed >= 1.0 ) then
-		local index = Autologin_PendingIndex;
-		Autologin_PendingIndex = nil;
-		self:Hide();
-		-- List may have changed while waiting; revalidate
-		if ( index >= 1 and index <= GetNumCharacters() and CharacterSelect.selectedIndex == index ) then
-			EnterWorld();
-		end
-	end
-end
 
 function Autologin_OnCharactersLoad()
 	Autologin_Load();
@@ -32,17 +14,12 @@ function Autologin_OnCharactersLoad()
 	end
 	local index = tonumber(selected.character);
 	if ( index >= 1 and index <= GetNumCharacters() ) then
+		-- Select now; EnterWorld is deferred to UPDATE_SELECTED_CHARACTER
+		-- (server-confirmed selection). Entering from CHARACTER_LIST_UPDATE
+		-- raced the handshake (missing trade skill data), and entering from
+		-- an OnUpdate timer broke the FrameXML load ("Interface failed").
 		CharacterSelect_SelectCharacter(index);
-		-- Do NOT EnterWorld immediately inside CHARACTER_LIST_UPDATE:
-		-- entering before the login handshake settles causes missing
-		-- trade skill data on first login. Wait ~1s via a timer instead.
-		if ( not Autologin_Timer ) then
-			Autologin_Timer = CreateFrame("FRAME");
-			Autologin_Timer:SetScript("OnUpdate", Autologin_OnUpdate);
-		end
-		Autologin_Timer.elapsed = 0;
 		Autologin_PendingIndex = index;
-		Autologin_Timer:Show();
 	end
 end
 
@@ -323,6 +300,10 @@ function CharacterSelect_OnEvent(self, event, ...)
 			self.selectedIndex = index;
 		end
 		UpdateCharacterSelection(self);
+		if ( Autologin_PendingIndex and index == Autologin_PendingIndex ) then
+			Autologin_PendingIndex = nil;
+			EnterWorld();
+		end
 	elseif ( event == "SELECT_LAST_CHARACTER" ) then
 		self.selectLast = 1;
 	elseif ( event == "SELECT_FIRST_CHARACTER" ) then
