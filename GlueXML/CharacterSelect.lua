@@ -12,6 +12,14 @@ function Autologin_OnCharactersLoad()
 	if ( selected.character == "-" or not tonumber(selected.character) ) then
 		return;
 	end
+	-- Only auto-enter right after a fresh login. Returning to character
+	-- select from in-game (logout) must NOT re-enter the world, or the
+	-- player gets trapped in a login loop and has to force-quit (which
+	-- loses cvar saves like minimap zoom and corrupts the item cache).
+	if ( not Autologin_JustLoggedIn ) then
+		return;
+	end
+	Autologin_JustLoggedIn = nil;
 	local index = tonumber(selected.character);
 	if ( index >= 1 and index <= GetNumCharacters() ) then
 		-- Select now; EnterWorld is deferred to UPDATE_SELECTED_CHARACTER
@@ -482,6 +490,7 @@ end
 function CharacterSelect_EnterWorld()
 	PlaySound("gsCharacterSelectionEnterWorld");
 	StopGlueAmbience();
+	Autologin_PendingIndex = nil;
 	Autologin_EnterWorld();
 	EnterWorld();
 end

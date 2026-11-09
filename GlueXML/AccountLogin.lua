@@ -251,6 +251,8 @@ function Autologin_OnLogin()
 	local password = AccountLoginPasswordEdit:GetText();
 	Autologin_Save(name, password);
 	Autologin_OnNameUpdate(name);
+	-- Mark a fresh login so character select auto-enters only once
+	Autologin_JustLoggedIn = true;
 end
 
 function AutologinAccountButton_OnClick(self)
