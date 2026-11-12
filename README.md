@@ -9,7 +9,6 @@ A port of [Haaxor1689/turtle-autologin](https://github.com/Haaxor1689/turtle-aut
 - Adds an Accounts select panel to the login screen
 - Automatically adds accounts with saved login info to the list
 - Select accounts to log in (double-click to login directly)
-- Check "Auto-login this character" on the character select screen to always
   automatically load into game with this character selected on future logins
 - Remove saved characters and accounts with controls at the bottom
 - Duplicate passwords are compressed in the saved string; a warning is shown
@@ -39,8 +38,6 @@ Data/
     GlueXML/
       AccountLogin.lua
       AccountLogin.xml
-      CharacterSelect.lua
-      CharacterSelect.xml
 ```
 
 4. Delete `Data/Cache/WDB` (cached interface files) before the first launch so
@@ -64,8 +61,6 @@ references. Omit the character index to disable character auto-login for that
 account. Because `accountName` is capped at 128 characters, the mod shows a
 warning on the login panel when the limit is exceeded.
 
-On the character select screen, the stored index is used to select the saved
-character and enter the world. When "Auto-login this character" is checked and
 you press Enter World, the currently selected character index is saved for that
 account.
 
