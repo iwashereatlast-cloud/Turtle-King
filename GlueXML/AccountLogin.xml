@@ -1,7 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\FrameXML\UI.xsd">
 	<Script file="AccountLogin.lua"/>
-
 	<Button name="VirtualKeyPadButtonTemplate" inherits="GlueMenuButtonTemplate" virtual="true">
 		<Size x="40" y="24"/>
 		<Scripts>
@@ -94,7 +93,6 @@
 	<ModelFFX name="AccountLogin" toplevel="true" parent="GlueParent" setAllPoints="true" enableKeyboard="true" hidden="true" fogNear="0" fogFar="1200" glow="0.08">
 		<Frames>
 			<Frame name="AccountLoginUI" setAllPoints="true">
-
 				<Layers>
 					<Layer level="ARTWORK">
 						<Texture file="Interface\Glues\Mainmenu\Glues-BlizzardLogo">
@@ -220,14 +218,18 @@
 							<OnEditFocusGained>
 								self:HighlightText();
 							</OnEditFocusGained>
-								<OnTextChanged>
-									if ( self:GetText() ~= "" ) then
-										AccountLoginAccountEditFill:Hide();
-									else
-										AccountLoginAccountEditFill:Show();
-									end
-									Autologin_OnNameUpdate(self:GetText());
-								</OnTextChanged>
+							<OnTextChanged>
+								local accountName = GetSavedAccountName();
+								if ( accountName ~= "" and accountName ~= self:GetText() ) then
+									SetSavedAccountName("");
+									AccountLoginSaveAccountName:SetChecked(0);
+								end
+								if ( self:GetText() ~= "" ) then
+									AccountLoginAccountEditFill:Hide();
+								else
+									AccountLoginAccountEditFill:Show();
+								end
+							</OnTextChanged>
 						</Scripts>
 						<FontString inherits="GlueEditBoxFont"/>
 						<TextInsets>

@@ -2,311 +2,8 @@ FADE_IN_TIME = 2;
 DEFAULT_TOOLTIP_COLOR = {0.8, 0.8, 0.8, 0.09, 0.09, 0.09};
 MAX_PIN_LENGTH = 10;
 
--- Autologin (ported from Turtle WoW for 3.3.5a)
-Autologin_Table = {};
-Autologin_SelectedIdx = nil;
-Autologin_CurrentPage = 0;
-Autologin_PageSize = 6;
-Autologin_LimitReached = false;
-
-function Autologin_Load()
-	Autologin_Table = {};
-	local val = GetSavedAccountName();
-	for n, p, c in string.gmatch(val, "(%S+) (%S+) *(%d*);") do
-		if ( c == "" ) then
-			c = "-";
-		end
-		-- Decompress duplicate passwords
-		if ( string.find(p, "~%d") == 1 ) then
-			p = Autologin_Table[tonumber(string.sub(p, 2, 3))].password;
-		end
-		tinsert(Autologin_Table, { name = n, password = p, character = c });
-	end
-end
-
-function Autologin_Save(name, password)
-	-- Add/update name and password in table
-	if ( name ~= nil and name ~= "" and password ~= nil and password ~= "" ) then
-		local exists = false;
-		for i = 1, #Autologin_Table do
-			if ( Autologin_Table[i].name == name ) then
-				exists = true;
-				Autologin_Table[i].password = password;
-			end
-		end
-		if ( not exists ) then
-			tinsert(Autologin_Table, { name = name, password = password, character = "-" });
-		end
-	end
-
-	-- If table is empty, reset saved var
-	if ( #Autologin_Table == 0 ) then
-		SetSavedAccountName("");
-		return;
-	end
-
-	-- Serialize table to saved var
-	local savedVar = "";
-	for i = 1, #Autologin_Table do
-		local r = Autologin_Table[i];
-		-- Compress duplicate passwords
-		local pw = r.password;
-		for j = 1, i - 1 do
-			if ( Autologin_Table[j].password == r.password ) then
-				pw = "~" .. j;
-			end
-		end
-		savedVar = savedVar .. r.name .. " " .. pw;
-		if ( r.character == "-" ) then
-			savedVar = savedVar .. ";";
-		else
-			savedVar = savedVar .. " " .. r.character .. ";";
-		end
-	end
-
-	Autologin_LimitReached = string.len(savedVar) > 128;
-	SetSavedAccountName(savedVar);
-end
-
--- Build the account panel entirely in Lua (CreateFrame works in the 3.3.5a
--- glue environment; this avoids XML parser quirks with custom templates).
-local function CreateAutologinFontString(parent, name, font, justifyH)
-	local fs = parent:CreateFontString(nil, "ARTWORK", font);
-	if ( justifyH ) then fs:SetJustifyH(justifyH); end
-	return fs;
-end
-
-function Autologin_BuildUI()
-	if ( AutologinAccountButton1 ) then
-		return;
-	end
-
-	local panel = CreateFrame("FRAME", "AutologinAccountsFrame", AccountLoginUI);
-	panel:SetWidth(260);
-	panel:SetHeight(560);
-	panel:SetPoint("TOPLEFT", AccountLoginUI, "TOPLEFT", 5, -15);
-	panel:SetBackdrop({
-		bgFile = "Interface\\Glues\\Common\\Glue-Tooltip-Background",
-		edgeFile = "Interface\\Glues\\Common\\Glue-Tooltip-Border",
-		tile = true, tileSize = 16, edgeSize = 16,
-		insets = { left = 10, right = 5, top = 4, bottom = 9 },
-	});
-
-	local title = panel:CreateFontString(nil, "BACKGROUND", "GlueFontDisableLarge");
-	title:SetWidth(256);
-	title:SetHeight(13);
-	title:SetPoint("TOP", panel, "TOP", 0, -10);
-	title:SetText("Select account");
-
-	local warning = panel:CreateFontString(nil, "BACKGROUND", "GlueFontRedSmall");
-	warning:SetWidth(220);
-	warning:SetHeight(28);
-	warning:SetPoint("TOP", panel, "BOTTOM", 0, 4);
-	warning:SetText("WARNING: Too many accounts. Changes won't be saved correctly.");
-	AutologinSizeWarning = warning;
-
-	for i = 1, Autologin_PageSize do
-		local button = CreateFrame("BUTTON", "AutologinAccountButton" .. i, panel);
-		button:SetID(i);
-		button:SetWidth(256);
-		button:SetHeight(70);
-		if ( i == 1 ) then
-			button:SetPoint("TOP", panel, "TOP", 22, -30);
-		else
-			button:SetPoint("TOP", "AutologinAccountButton" .. (i - 1), "BOTTOM", 0, 13);
-		end
-
-		local highlight = button:CreateTexture(nil, "HIGHLIGHT");
-		highlight:SetTexture("Interface\\Glues\\CharacterSelect\\Glue-CharacterSelect-Highlight");
-		highlight:SetWidth(256);
-		highlight:SetHeight(74);
-		highlight:SetPoint("TOPLEFT", button, "TOPLEFT", -20, 8);
-		highlight:SetBlendMode("ADD");
-
-		local name = button:CreateFontString(nil, "BORDER", "GlueFontNormal");
-		name:SetJustifyH("LEFT");
-		name:SetPoint("TOPLEFT", button, "TOPLEFT", 0, -5);
-
-		local password = button:CreateFontString(nil, "BORDER", "GlueFontHighlightSmall");
-		password:SetJustifyH("LEFT");
-		password:SetWidth(217);
-		password:SetHeight(12);
-		password:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -1);
-
-		local character = button:CreateFontString(nil, "BORDER", "GlueFontDisableSmall");
-		character:SetJustifyH("LEFT");
-		character:SetWidth(217);
-		character:SetHeight(16);
-		character:SetPoint("TOPLEFT", password, "BOTTOMLEFT", 0, -1);
-
-		button.nameFS = name;
-		button.passwordFS = password;
-		button.characterFS = character;
-
-		button:SetScript("OnClick", function(self) AutologinAccountButton_OnClick(self); end);
-		button:SetScript("OnDoubleClick", function(self) AutologinAccountButton_OnDoubleClick(self); end);
-	end
-
-	local removeBtn = CreateFrame("BUTTON", "AutologinRemoveAccountButton", panel, "GlueButtonSmallTemplate");
-	removeBtn:SetWidth(150);
-	removeBtn:SetHeight(38);
-	removeBtn:SetPoint("BOTTOM", panel, "BOTTOM", 0, 5);
-	removeBtn:SetText("Remove account");
-	removeBtn:SetScript("OnClick", function() Autologin_RemoveAccount(); end);
-
-	local clearBtn = CreateFrame("BUTTON", "AutologinClearCharacterButton", panel, "GlueButtonSmallTemplate");
-	clearBtn:SetWidth(150);
-	clearBtn:SetHeight(38);
-	clearBtn:SetPoint("BOTTOM", removeBtn, "TOP", 0, 10);
-	clearBtn:SetText("Clear character");
-	clearBtn:SetScript("OnClick", function() Autologin_ClearCharacter(); end);
-
-	local function arrowButton(name, texPrefix, point, x)
-		local btn = CreateFrame("BUTTON", name, panel);
-		btn:SetWidth(32);
-		btn:SetHeight(32);
-		btn:SetPoint(point, panel, point, x, 10);
-		btn:SetNormalTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Up");
-		btn:SetPushedTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Down");
-		local hl = btn:CreateTexture(nil, "HIGHLIGHT");
-		hl:SetTexture("Interface\\Glues\\Common\\" .. texPrefix .. "-Button-Highlight");
-		hl:SetBlendMode("ADD");
-		hl:SetAllPoints(btn);
-		return btn;
-	end
-
-	local nextBtn = arrowButton("AutologinNextPage", "Glue-RightArrow", "BOTTOMRIGHT", -5);
-	nextBtn:SetScript("OnClick", function() Autologin_NextPage(); end);
-	local prevBtn = arrowButton("AutologinPrevPage", "Glue-LeftArrow", "BOTTOMLEFT", 10);
-	prevBtn:SetScript("OnClick", function() Autologin_PrevPage(); end);
-end
-
-function Autologin_CleanLoginUI()
-	if ( AccountLoginLogo ) then AccountLoginLogo:Hide(); end
-	if ( AccountLoginVersion ) then AccountLoginVersion:Hide(); end
-	if ( WorldOfWarcraftRating ) then WorldOfWarcraftRating:Hide(); end
-	if ( AccountLoginCommunityButton ) then AccountLoginCommunityButton:Hide(); end
-	if ( AccountLoginManageAccountButton ) then AccountLoginManageAccountButton:Hide(); end
-	if ( AccountLoginShowLauncher ) then AccountLoginShowLauncher:Hide(); end
-	if ( AccountLoginSaveAccountName ) then AccountLoginSaveAccountName:Hide(); end
-	if ( AccountLoginSaveAccountNameText ) then AccountLoginSaveAccountNameText:Hide(); end
-end
-
-function Autologin_SelectAccount(idx)
-	local i = Autologin_CurrentPage * Autologin_PageSize + idx;
-	if ( not Autologin_Table[i] ) then
-		return;
-	end
-	AccountLoginAccountEdit:SetText(Autologin_Table[i].name);
-	AccountLoginPasswordEdit:SetText(Autologin_Table[i].password);
-end
-
-function Autologin_OnNameUpdate(name)
-	Autologin_SelectedIdx = nil;
-	for i = 1, #Autologin_Table do
-		if ( Autologin_Table[i].name == name ) then
-			Autologin_SelectedIdx = i;
-		end
-	end
-	if ( Autologin_SelectedIdx ) then
-		Autologin_CurrentPage = math.floor((Autologin_SelectedIdx - 1) / Autologin_PageSize);
-	end
-	Autologin_UpdateUI();
-end
-
-function Autologin_UpdateUI()
-	if ( not AutologinAccountButton1 ) then
-		return;
-	end
-	local skip = Autologin_CurrentPage * Autologin_PageSize;
-	for i = 1, Autologin_PageSize do
-		local button = _G["AutologinAccountButton" .. i];
-		button:UnlockHighlight();
-		if ( skip + i > #Autologin_Table ) then
-			button:Hide();
-		else
-			local r = Autologin_Table[skip + i];
-			button:Show();
-			button.nameFS:SetText(r.name);
-			button.passwordFS:SetText("Password: " .. string.rep("*", string.len(r.password)));
-			if ( r.character == "-" ) then
-				button.characterFS:SetText("");
-			else
-				button.characterFS:SetText("Character: " .. r.character);
-			end
-			if ( Autologin_SelectedIdx == skip + i ) then
-				button:LockHighlight();
-			end
-		end
-	end
-	if ( Autologin_LimitReached ) then
-		if ( AutologinSizeWarning ) then AutologinSizeWarning:Show(); end
-	else
-		if ( AutologinSizeWarning ) then AutologinSizeWarning:Hide(); end
-	end
-end
-
-function Autologin_OnLogin()
-	local name = AccountLoginAccountEdit:GetText();
-	local password = AccountLoginPasswordEdit:GetText();
-	Autologin_Save(name, password);
-	Autologin_OnNameUpdate(name);
-	-- Mark a fresh login so character select auto-enters only once
-	Autologin_JustLoggedIn = true;
-end
-
-function AutologinAccountButton_OnClick(self)
-	Autologin_SelectAccount(self:GetID());
-end
-
-function AutologinAccountButton_OnDoubleClick(self)
-	Autologin_SelectAccount(self:GetID());
-	AccountLogin_Login();
-end
-
-function Autologin_RemoveAccount()
-	if ( not Autologin_SelectedIdx ) then
-		return;
-	end
-	tremove(Autologin_Table, Autologin_SelectedIdx);
-	Autologin_Save();
-	AccountLoginAccountEdit:SetText("");
-	AccountLoginPasswordEdit:SetText("");
-	if ( Autologin_CurrentPage > 0 and Autologin_CurrentPage * Autologin_PageSize > #Autologin_Table - 1 ) then
-		Autologin_CurrentPage = Autologin_CurrentPage - 1;
-	end
-	Autologin_UpdateUI();
-end
-
-function Autologin_ClearCharacter()
-	if ( not Autologin_SelectedIdx ) then
-		return;
-	end
-	Autologin_Table[Autologin_SelectedIdx].character = "-";
-	Autologin_Save();
-	Autologin_UpdateUI();
-end
-
-function Autologin_NextPage()
-	if ( (Autologin_CurrentPage + 1) * Autologin_PageSize > #Autologin_Table - 1 ) then
-		return;
-	end
-	Autologin_CurrentPage = Autologin_CurrentPage + 1;
-	Autologin_UpdateUI();
-end
-
-function Autologin_PrevPage()
-	if ( Autologin_CurrentPage == 0 ) then
-		return;
-	end
-	Autologin_CurrentPage = Autologin_CurrentPage - 1;
-	Autologin_UpdateUI();
-end
-
 function AccountLogin_OnLoad(self)
 	TOSFrame.noticeType = "EULA";
-	Autologin_BuildUI();
-	Autologin_CleanLoginUI();
 
 	self:RegisterEvent("SHOW_SERVER_ALERT");
 	self:RegisterEvent("SHOW_SURVEY_NOTIFICATION");
@@ -342,7 +39,6 @@ end
 
 function AccountLogin_OnShow(self)
 	self:SetSequence(0);
-	Autologin_CleanLoginUI();
 	PlayGlueMusic(CurrentGlueMusic);
 	PlayGlueAmbience(GlueAmbienceTracks["DARKPORTAL"], 4.0);
 
@@ -358,7 +54,7 @@ function AccountLogin_OnShow(self)
 
 	local accountName = GetSavedAccountName();
 	
-	AccountLoginAccountEdit:SetText("");
+	AccountLoginAccountEdit:SetText(accountName);
 	AccountLoginPasswordEdit:SetText("");
 	AccountLoginTokenEdit:SetText("");
 	if ( accountName and accountName ~= "" and GetUsesToken() ) then
@@ -368,15 +64,6 @@ function AccountLogin_OnShow(self)
 	end
 	
 	AccountLogin_SetupAccountListDDL();
-	
-	-- Autologin OnShow
-	Autologin_Load();
-	if ( #Autologin_Table ~= 0 ) then
-		Autologin_SelectAccount(1);
-		accountName = AccountLoginAccountEdit:GetText();
-		Autologin_OnNameUpdate(accountName);
-	end
-	Autologin_UpdateUI();
 	
 	if ( accountName == "" ) then
 		AccountLogin_FocusAccountName();
@@ -400,7 +87,7 @@ end
 function AccountLogin_OnHide(self)
 	--Stop the sounds from the login screen (like the dragon roaring etc)
 	StopAllSFX( 1.0 );
-	if ( AccountLoginSaveAccountName and not AccountLoginSaveAccountName:GetChecked() ) then
+	if ( not AccountLoginSaveAccountName:GetChecked() ) then
 		SetSavedAccountList("");
 	end
 end
@@ -482,10 +169,15 @@ end
 
 function AccountLogin_Login()
 	PlaySound("gsLogin");
-	-- Autologin OnLogin
-	Autologin_OnLogin();
 	DefaultServerLogin(AccountLoginAccountEdit:GetText(), AccountLoginPasswordEdit:GetText());
 	AccountLoginPasswordEdit:SetText("");
+	
+	if ( AccountLoginSaveAccountName:GetChecked() ) then
+		SetSavedAccountName(AccountLoginAccountEdit:GetText());
+	else
+		SetSavedAccountName("");
+		SetUsesToken(false);
+	end
 end
 
 function AccountLogin_TOS()
@@ -994,13 +686,6 @@ end
 
 AccountList = {};
 function AccountLogin_SetupAccountListDDL()
-	if ( string.find(GetSavedAccountName(), ";", 1, true) ) then
-		-- Autologin format is in use; hide the stock account dropdown
-		AccountLoginPasswordEdit:SetPoint("BOTTOM", 0, 275);
-		AccountLoginLoginButton:SetPoint("BOTTOM", 0, 170);
-		AccountLoginDropDown:Hide();
-		return;
-	end
 	if ( GetSavedAccountName() ~= "" and GetSavedAccountList() ~= "" ) then
 		AccountLoginPasswordEdit:SetPoint("BOTTOM", 0, 255);
 		AccountLoginLoginButton:SetPoint("BOTTOM", 0, 150);
